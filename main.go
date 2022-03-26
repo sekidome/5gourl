@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"strings"
 )
 
-var output = flag.String("o", "", "write output into file") // the emty string "" is the default value. It changes if there is userinput.
+var flagOutput = flag.String("o", "", "write output into file") // the emty string "" is the default value. It changes if there is userinput.
 
 func checkURL(url string) string {
 	if strings.HasPrefix(url, "https://") {
@@ -23,7 +24,7 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) != 1 {
-		log.Fatal("Can only takes one URL as input.")
+		log.Fatal("Takes one URL as input.")
 		os.Exit(1)
 	}
 	url := args[0]
@@ -34,6 +35,20 @@ func main() {
 		os.Exit(1)
 	}
 	defer resp.Body.Close()
-	output := os.Stdout
-	io.Copy(output, resp.Body)
+	var writer io.Writer = os.Stdout
+	// *flagOutput != "" -> if the var set to flag.String is not the default
+	if *flagOutput != "" {
+		file, err := os.OpenFile(
+			*flagOutput,
+			os.O_RDWR|os.O_CREATE,
+			0755,
+		)
+		if err != nil {
+			fmt.Printf("Failed to create%s\n%v", *flagOutput, err)
+			os.Exit(1)
+		}
+		defer file.Close()
+		writer = file
+	}
+	io.Copy(writer, resp.Body)
 }
